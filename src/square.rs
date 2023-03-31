@@ -6,7 +6,7 @@ pub struct Square {
     pub position: (f64, f64),
     pub mass: f64,
     forces: Vec<Vec2>,
-    speed: Vec2,
+    velocity: Vec2,
     acceleration: Vec2,
 }
 
@@ -17,14 +17,14 @@ impl Square {
             position,
             mass,
             forces: Vec::new(),
-            speed: Vec2(0.0, 0.0),
+            velocity: Vec2(10.0, -5.0),
             acceleration: Vec2(0.0, 0.0),
         }
     }
     fn force(&mut self, x: f64, y: f64) {
         self.forces.push(Vec2(x, y));
     }
-    fn evaluate_forces(&mut self) {
+    fn evaluate_acceleration(&mut self) {
         let forces = std::mem::take(&mut self.forces);
         println!("f: {:?}", forces);
         let acceleration = forces
@@ -36,32 +36,36 @@ impl Square {
         self.acceleration.1 += acceleration.1 / self.mass;
     }
 
-    fn evaluate_acceleration(&mut self, delta: f64) {
-        self.speed.0 += self.acceleration.0 * delta;
-        self.speed.1 += self.acceleration.1 * delta;
+    fn evaluate_velocity(&mut self, delta: f64) {
+        self.velocity.0 += self.acceleration.0 * delta;
+        self.velocity.1 += self.acceleration.1 * delta;
     }
 
-    fn evaluate_speed(&mut self, delta: f64) {
-        self.position.0 += self.speed.0 * delta;
-        self.position.1 += self.speed.1 * delta;
+    fn evaluate_position(&mut self, delta: f64) {
+        self.position.0 += self.velocity.0 * delta;
+        self.position.1 += self.velocity.1 * delta;
     }
 
     pub fn evaluate(&mut self, delta: f64) {
-        let drag_x = self.calculate_drag(self.speed.0);
-        let drag_y = self.calculate_drag(self.speed.1);
+        self.acceleration = Vec2(0.0, 0.0);
+        let drag_x = self.calculate_drag(self.velocity.0);
+        let drag_y = self.calculate_drag(self.velocity.1);
         self.force(drag_x, drag_y);
 
-        println!("\nd: {drag_x}");
-        println!("a: {:?}", self.acceleration.0);
-        println!("s: {:?}", self.speed.0);
-        self.evaluate_forces();
-        self.evaluate_acceleration(delta);
-        self.evaluate_speed(delta);
+        let prev_speed = self.velocity.1;
+
+        self.evaluate_acceleration();
+        self.evaluate_velocity(delta);
+        self.evaluate_position(delta);
+
+        println!("sD: {}", self.velocity.1 - prev_speed);
+        println!("d: {drag_x}, {drag_y}");
+        println!("a: {:?}", self.acceleration);
+        println!("s: {:?}\n", self.velocity);
     }
 
     pub fn propel(&mut self, x: f64, y: f64) {
         self.force(x, y);
-        //self.force(0.0, 9.82);
     }
 
     fn calculate_drag(&self, speed: f64) -> f64 {
